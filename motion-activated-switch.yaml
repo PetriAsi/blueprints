@@ -1,0 +1,55 @@
+blueprint:
+  name: Motion-activated Switch (Improved)
+  description: Turn on a switch when motion is detected.
+  domain: automation
+  source_url: https://github.com/home-assistant/core/blob/1fc4284a29602168708036c69d8d9fdea25bbc65/homeassistant/components/automation/blueprints/motion_light.yaml
+  input:
+    motion_entity:
+      name: Motion Sensor
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+    switch_target:
+      name: Switch
+      selector:
+        target:
+          entity:
+            domain: switch
+    no_motion_wait:
+      name: Wait time
+      description: Time to leave the switch on after last motion is detected.
+      default: 120
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+
+# If motion is detected within the delay,
+# we restart the script.
+mode: restart
+max_exceeded: silent
+
+variables:
+  motion_entity: !input motion_entity
+  switch_target: !input switch_target
+
+trigger:
+  - platform: state
+    entity_id: !input motion_entity
+    to: "on"
+  - platform: state
+    entity_id: !input switch_target
+    from: "off"
+    to: "on"
+
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: !input switch_target
+  - wait_template: "{{ is_state(motion_entity, 'off') or is_state(switch_target, 'off')}}"
+  - delay: !input no_motion_wait
+  - service: switch.turn_off
+    target:
+      entity_id: !input switch_target
